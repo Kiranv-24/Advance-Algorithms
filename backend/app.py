@@ -12,12 +12,13 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import cross_val_score, TimeSeriesSplit
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 import io
 import base64
 from io import BytesIO
 from scipy.ndimage import gaussian_filter1d
+from openai import OpenAI
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -28,7 +29,7 @@ db_config = {
     'host': 'localhost',
     'user': 'root',
     'password': '123456',
-    'database': 'feedback_system'
+    'database': 'store'
 }
 
 # Load the sentiment analysis model and vectorizer
@@ -41,56 +42,69 @@ except Exception as e:
 
 class ProductImprovementSystem:
     def __init__(self, api_key):
-        self.api_key = api_key
-        self.gemini_api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-        self.headers = {'Content-Type': 'application/json'}
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.llama-api.com"
+        )
 
     def analyze_reviews(self, reviews):
+        if not reviews:
+            return "No reviews available for analysis."
+            
         combined_reviews = " ".join(reviews)
-        prompt = f"""
-        You are an AI product analyst. Based on the following customer reviews, identify the key issues with the product and provide actionable improvement suggestions. For each issue, also give a priority level.
-
-        Your response should be structured as follows:
-        1. **Key Issue #1**: (brief description of the problem)
-            - **Suggestion**: (specific action or improvement)
-            - **Priority**: (High, Medium, Low)
-        2. **Key Issue #2**: (brief description of the problem)
-            - **Suggestion**: (specific action or improvement)
-            - **Priority**: (High, Medium, Low)
-        3. Continue listing more issues and suggestions if applicable.
-
-        Please ensure the following:
-        - Focus on the **most common** and **important** issues across reviews.
-        - Make suggestions **specific**, **realistic**, and **easy to implement**.
-        - Ensure that the priority levels reflect the **urgency** and **impact** of each issue.
+        system_message = """You are a product analyst AI. Analyze customer reviews and provide structured improvement suggestions with priority levels, specific improvements, and implementation steps."""
+        
+        user_message = f"""
+        Analyze these product reviews and provide structured improvement suggestions:
 
         Reviews: {combined_reviews}
+
+        Please provide:
+        1. Key issues identified (with priority levels)
+        2. Specific improvement suggestions
+        3. Implementation recommendations
+
+        Format the response as:
+        
+        ISSUES AND SUGGESTIONS:
+        1. [Priority: HIGH/MEDIUM/LOW] Issue: (description)
+           - Suggestion: (specific improvement)
+           - Implementation: (specific steps)
+
+        2. [Priority: HIGH/MEDIUM/LOW] Issue: (description)
+           - Suggestion: (specific improvement)
+           - Implementation: (specific steps)
         """
-        return self.get_suggestion_from_api(prompt)
+        
+        return self.get_suggestion_from_api(system_message, user_message)
 
-
-
-    def get_suggestion_from_api(self, prompt):
-        data = {
-            "contents": [{"parts": [{"text": prompt}]}]
-        }
+    def get_suggestion_from_api(self, system_message, user_message):
         try:
-            response = requests.post(
-                f"{self.gemini_api_url}?key={self.api_key}",
-                headers=self.headers,
-                data=json.dumps(data)
+            response = self.client.chat.completions.create(
+                model="llama3.1-70b",
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.7,
+                max_tokens=1000
             )
-            if response.status_code == 200:
-                response_json = response.json()
-                suggestion = response_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", None)
-                return suggestion.strip() if suggestion else "No actionable suggestion generated."
+            
+            return response.choices[0].message.content.strip()
+                
+        except Exception as e:
+            error_message = str(e)
+            if "401" in error_message:
+                return "Error: Invalid API key or authentication failed."
+            elif "404" in error_message:
+                return "Error: API endpoint not found. Please check the configuration."
+            elif "429" in error_message:
+                return "Error: Rate limit exceeded. Please try again later."
             else:
-                return f"Error: {response.status_code} - {response.text}"
-        except requests.exceptions.RequestException as e:
-            return f"An error occurred: {e}"
+                return f"Error: An unexpected error occurred - {error_message}"
 
-# Initialize the Product Improvement System
-api_key = "AIzaSyD7mPGem7KTtks2bOZ0cIeoxYNWhchDnPk"  
+# Initialize with your actual Llama API key
+api_key = "LA-91b560490791402d801e4e19424f0b2af804514c2064499182a0c4a9987bdff8"
 improvement_system = ProductImprovementSystem(api_key)
 
 def get_db_connection():
@@ -171,20 +185,24 @@ def get_product_reviews(product_id):
 @app.route('/analyze-product-reviews/<int:product_id>', methods=['GET'])
 def analyze_product_reviews(product_id):
     conn = get_db_connection()
+    print(product_id)
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
 
     try:
         # Fetch reviews for the specific product
+        # print(product_id)
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT r.feedback, r.rating, r.created_at, p.name as product_name
-            FROM reviews r
-            JOIN products p ON r.product_id = p.id
+            SELECT r.feedback, r.rating, r.created_at, p.name AS product_name
+            FROM reviews AS r
+            JOIN products AS p ON r.product_id = p.id
             WHERE r.product_id = %s
-        """, (product_id,))
-        reviews = cursor.fetchall()
+        """, (product_id,))  # Correct parameterization
 
+        reviews = cursor.fetchall()
+        # print(curso/r)
+        # print(reviews)
         if not reviews:
             return jsonify({
                 'sentiment_analysis': {
@@ -260,7 +278,7 @@ _BASE_PREDICTIONS = {}
 def get_cached_model(key, params):
     """Get or create a model with consistent random state"""
     if key not in _MODEL_CACHE:
-        _MODEL_CACHE[key] = GradientBoostingRegressor(**params)
+        _MODEL_CACHE[key] = RandomForestRegressor(**params)
     return _MODEL_CACHE[key]
 
 def feature_engineering(data):
@@ -359,12 +377,13 @@ def sales_prediction(data, forecast_days=7, brand=None, model=None):
     X = filtered[feature_cols]
     y = filtered['quantity_sold']
 
-    # Get or create cached model
+    # Get or create cached model with Random Forest parameters
     if prediction_key not in _MODEL_CACHE:
-        _MODEL_CACHE[prediction_key] = GradientBoostingRegressor(
+        _MODEL_CACHE[prediction_key] = RandomForestRegressor(
             n_estimators=100,
-            learning_rate=0.1,
-            max_depth=3,
+            max_depth=10,
+            min_samples_split=2,
+            min_samples_leaf=1,
             random_state=42
         )
         
@@ -404,30 +423,19 @@ def sales_prediction(data, forecast_days=7, brand=None, model=None):
     max_val = overall_mean * 2.0  # Maximum 200% of mean
     predictions = np.clip(predictions, min_val, max_val)
     
-    # Apply day-of-week patterns consistently
-    dow_patterns = filtered.groupby('day_of_week')['quantity_sold'].mean()
-    dow_factors = dow_patterns / dow_patterns.mean()
+    # Store predictions for next time
+    _LAST_PREDICTIONS[prediction_key] = predictions.copy()
     
-    for i, date in enumerate(future_dates):
-        predictions[i] *= dow_factors.get(date.dayofweek, 1.0)
+    # Calculate cross-validation scores
+    tscv = TimeSeriesSplit(n_splits=5)
+    cv_scores = cross_val_score(model, X, y, cv=tscv, scoring='neg_mean_squared_error')
+    rmse_scores = np.sqrt(-cv_scores)
     
-    # Round predictions to 2 decimal places
-    final_predictions = np.round(predictions, 2)
-    
-    # Store predictions for next run
-    _LAST_PREDICTIONS[prediction_key] = final_predictions
-    
-    # Create forecast DataFrame
-    forecast = pd.DataFrame({
-        'date': future_dates,
-        'predicted_sales': final_predictions
-    })
-
     return {
-        'forecast': forecast.to_dict('records'),
+        'forecast': predictions.tolist(),
         'cv_scores': {
-            'mean': float(overall_mean),
-            'recent_mean': float(recent_mean)
+            'rmse_mean': float(rmse_scores.mean()),
+            'rmse_std': float(rmse_scores.std())
         }
     }
 
@@ -567,13 +575,11 @@ def sales_forecast():
         X_scaled = scaler.fit_transform(X)
 
         # Train model with simpler parameters for small datasets
-        model = GradientBoostingRegressor(
+        model = RandomForestRegressor(
             n_estimators=100,
-            learning_rate=0.1,
-            max_depth=3,
+            max_depth=10,
             min_samples_split=2,
             min_samples_leaf=1,
-            subsample=1.0,
             random_state=42
         )
 

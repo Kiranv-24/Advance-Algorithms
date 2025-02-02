@@ -11,10 +11,11 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 
 const AnalysisResultsPage = () => {
   const location = useLocation();
-  const { salesForecast, stockoutPrediction, demandAnalysis } = location.state;
+  const { salesForecast, stockoutPrediction, demandAnalysis, initialStock } = location.state;
 
   // Round up predicted_sales in the sales forecast
   const roundedSalesForecast = useMemo(() => {
@@ -25,6 +26,14 @@ const AnalysisResultsPage = () => {
         : "N/A",
     }));
   }, [salesForecast]);
+
+  // Calculate total quantity sold
+  const totalQuantitySold = roundedSalesForecast?.reduce((total, forecast) => {
+    return total + (forecast.predicted_sales || 0);
+  }, 0) || 0;
+
+  // Calculate current stock
+  const currentStock = initialStock - totalQuantitySold;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -61,6 +70,16 @@ const AnalysisResultsPage = () => {
                 </TableBody>
               </Table>
             </Box>
+            {/* Bar Chart for Sales Forecast */}
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={roundedSalesForecast}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="predicted_sales" fill="#FF5733" shape={<CustomBar />} />
+              </BarChart>
+            </ResponsiveContainer>
           </Paper>
         </Grid>
         {/* Stockout Prediction Section */}
@@ -85,6 +104,9 @@ const AnalysisResultsPage = () => {
               color={stockoutPrediction?.warning ? "error" : "success"}
             >
               {stockoutPrediction?.message}
+            </Typography>
+            <Typography>
+              Current Stock: {currentStock >= 0 ? currentStock : 0} units
             </Typography>
           </Paper>
         </Grid>
@@ -117,6 +139,22 @@ const AnalysisResultsPage = () => {
         </Grid>
       </Grid>
     </Box>
+  );
+};
+
+// Custom Bar component to create sharp edges
+const CustomBar = (props) => {
+  const { x, y, width, height } = props;
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={props.fill}
+      stroke="#000" // Optional: Add a stroke for better visibility
+      strokeWidth={1} // Optional: Adjust stroke width
+    />
   );
 };
 

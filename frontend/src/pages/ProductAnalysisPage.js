@@ -285,7 +285,7 @@ const ProductAnalysisPage = () => {
       >
         {loading.demand ? "Analyzing..." : "Demand Analysis"}
       </Button>
-      {/* <Button
+      <Button
         variant={activeTab === 2 ? "contained" : "outlined"}
         color="warning"
         onClick={() => {
@@ -296,7 +296,7 @@ const ProductAnalysisPage = () => {
         startIcon={loading.stockout && <CircularProgress size={20} />}
       >
         {loading.stockout ? "Predicting..." : "Stockout Prediction"}
-      </Button> */}
+      </Button>
     </Box>
   );
 
@@ -358,13 +358,13 @@ const ProductAnalysisPage = () => {
     const combinedChartData = [
       ...(data.historical_data || []).map((item) => ({
         date: item.date,
-        sales: item.actual_sales || 0,
-        type: "Historical",
+        historical: item.actual_sales || 0,
+        forecast: null
       })),
       ...(data.forecast_data || []).map((item) => ({
         date: item.date,
-        sales: Math.ceil(item.predicted_sales || 0),
-        type: "Forecast",
+        historical: null,
+        forecast: item.predicted_sales || 0
       })),
     ];
 
@@ -394,11 +394,24 @@ const ProductAnalysisPage = () => {
                   />
                   <Legend />
                   <Line
-                    type="monotone"
-                    dataKey="sales"
+                    type="linear"
+                    dataKey="historical"
                     stroke="#8884d8"
-                    name="Sales"
-                    dot={false}
+                    name="Historical Sales"
+                    dot={{ stroke: '#8884d8', strokeWidth: 1, r: 4 }}
+                    strokeWidth={1.5}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="forecast"
+                    stroke="#FF0000"
+                    name="Forecasted Sales"
+                    dot={{ stroke: '#FF0000', strokeWidth: 1, r: 4 }}
+                    strokeWidth={1.5}
+                    connectNulls={false}
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -438,8 +451,12 @@ const ProductAnalysisPage = () => {
                       <TableCell>
                         {new Date(row.date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell align="right">{row.sales}</TableCell>
-                      <TableCell align="right">{row.type}</TableCell>
+                      <TableCell align="right">
+                        {row.historical || row.forecast}
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.historical !== null ? "Historical" : "Forecast"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -498,28 +515,31 @@ const ProductAnalysisPage = () => {
               />
               <Legend />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="sales"
                 stroke="#8884d8"
                 name="Daily Sales"
-                dot={false}
+                dot={{ stroke: '#8884d8', strokeWidth: 1, r: 4 }}
+                strokeWidth={1.5}
                 isAnimationActive={false}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="MA7"
                 stroke="#82ca9d"
                 name="7-Day Moving Average"
-                dot={false}
+                dot={{ stroke: '#82ca9d', strokeWidth: 1, r: 4 }}
+                strokeWidth={1.5}
                 connectNulls
                 isAnimationActive={false}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="MA30"
                 stroke="#ffc658"
                 name="30-Day Moving Average"
-                dot={false}
+                dot={{ stroke: '#ffc658', strokeWidth: 1, r: 4 }}
+                strokeWidth={1.5}
                 connectNulls
                 isAnimationActive={false}
               />
@@ -694,8 +714,7 @@ const ProductAnalysisPage = () => {
                     Safety Stock: {Math.round(data.metrics.safety_stock)} units
                   </Typography>
                   <Typography variant="body2" gutterBottom>
-                    Reorder Point: {Math.round(data.metrics.reorder_point)}{" "}
-                    units
+                    Reorder Point: {Math.round(data.metrics.reorder_point)} units
                   </Typography>
                   <Typography variant="body2" gutterBottom>
                     Max Daily Sales: {data.metrics.max_daily_sales} units
@@ -724,68 +743,6 @@ const ProductAnalysisPage = () => {
               </Alert>
             </Box>
           )}
-
-          {/* Stock Level Chart */}
-          <Box sx={{ height: 400, width: "100%" }}>
-            <ResponsiveContainer>
-              <LineChart data={data.stock_projections}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(str) => new Date(str).toLocaleDateString()}
-                />
-                <YAxis />
-                <Tooltip
-                  labelFormatter={(str) => new Date(str).toLocaleDateString()}
-                  formatter={(value, name) => [
-                    `${Math.round(value)} units`,
-                    name === "actual_stock"
-                      ? "Historical Stock"
-                      : name === "avg_case_stock"
-                      ? "Average Case Projection"
-                      : "Worst Case Projection",
-                  ]}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="actual_stock"
-                  stroke="#8884d8"
-                  name="Historical Stock"
-                  strokeWidth={2}
-                  dot={true}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="avg_case_stock"
-                  stroke="#82ca9d"
-                  name="Average Case Projection"
-                  strokeDasharray="5 5"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="worst_case_stock"
-                  stroke="#ff7300"
-                  name="Worst Case Projection"
-                  strokeDasharray="3 3"
-                  dot={false}
-                />
-                <ReferenceLine
-                  y={data.metrics.reorder_point}
-                  stroke="red"
-                  strokeDasharray="3 3"
-                  label={{ value: "Reorder Point", position: "right" }}
-                />
-                <ReferenceLine
-                  y={data.metrics.safety_stock}
-                  stroke="#ffc658"
-                  strokeDasharray="3 3"
-                  label={{ value: "Safety Stock", position: "left" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Box>
         </CardContent>
       </Card>
     );

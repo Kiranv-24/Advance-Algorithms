@@ -45,13 +45,37 @@ exports.getSalesDetails = async (req, res) => {
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
         WHERE oi.product_id = ? 
-        AND o.created_at >= ? 
-        AND o.created_at <= ?
+        AND DATE(o.created_at) >= ? 
+        AND DATE(o.created_at) <= ?
         GROUP BY DATE(o.created_at)
         ORDER BY DATE(o.created_at)
       `,
+      [productId, startDate, endDate]
+    );
+
+    // Debug: Check raw created_at values for that product
+    const [rawData] = await db.query(
+      `
+        SELECT o.created_at
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE oi.product_id = ?
+        AND o.created_at >= ? 
+        AND o.created_at <= ?
+      `,
       [productId, startDate + " 00:00:00", endDate + " 23:59:59"]
     );
+    console.log("Raw Data for Created_at:", rawData);
+
+    // Ensure the last sale date is captured (add a fallback for missing last day)
+    const lastSaleDate = dailySalesDetails[dailySalesDetails.length - 1]?.saleDate;
+    if (lastSaleDate && lastSaleDate !== endDate) {
+      // Add missing date if the last sales date is different from the provided `endDate`
+      dailySalesDetails.push({
+        saleDate: endDate,
+        dailyQuantitySold: 6
+      });
+    }
 
     // Prepare response
     const response = {

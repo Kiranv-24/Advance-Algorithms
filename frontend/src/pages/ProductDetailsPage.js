@@ -17,8 +17,10 @@ const ProductDetailsPage = () => {
       const response = await fetch(
         `http://localhost:5001/analyze-product-reviews/${id}`
       );
+      console.log(response);
       if (!response.ok) throw new Error("Failed to fetch analysis");
       const analysisResult = await response.json();
+      console.log(analysisResult);
       navigate("/analysis-results", { state: { analysis: analysisResult } });
     } catch (error) {
       console.error("Error analyzing reviews:", error);

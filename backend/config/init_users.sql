@@ -1,8 +1,8 @@
 -- Create the database
-CREATE DATABASE IF NOT EXISTS feedback_system;
+CREATE DATABASE IF NOT EXISTS Store;
 
 -- Use the database
-USE feedback_system;
+USE Store;
 
 -- Drop existing tables to ensure clean slate
 DROP TABLE IF EXISTS order_items;

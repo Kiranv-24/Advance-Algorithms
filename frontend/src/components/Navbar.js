@@ -3,11 +3,36 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { useNavigate } from "react-router-dom";
 import { cartService } from "../services/api";
 
+
 const Navbar = () => {
   const navigate = useNavigate();
   const [cartItemCount, setCartItemCount] = useState(0);
   const role = localStorage.getItem("role");
   const token = localStorage.getItem("token");
+  
+  useEffect(() => {
+    fetchCartCount();
+
+    // Listen for the 'cart-updated' event and update cart count
+    const handleCartUpdate = () => {
+      fetchCartCount();
+    };
+
+    window.addEventListener("cart-updated", handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener("cart-updated", handleCartUpdate);
+    };
+  }, []);
+
+  const fetchCartCount = async () => {
+    try {
+      const response = await cartService.getCart();
+      setCartItemCount(response.data.length); // Assuming response contains an array of cart items
+    } catch (error) {
+      console.error("Error fetching cart count:", error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -75,10 +100,16 @@ const Navbar = () => {
                     >
                       <ShoppingCartIcon className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
                       {cartItemCount > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white animate-pulse">
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white ">
                           {cartItemCount}
                         </span>
                       )}
+                    </button>
+                    <button
+                      onClick={() => navigate("/OrderHistory")}
+                      className="text-[#333333] hover:bg-[#F5F5F5] px-4 py-2 rounded-lg text-sm font-semibold backdrop-blur-sm transition-all duration-300 border border-gray-300 hover:border-gray-400"
+                    >
+                      Order History
                     </button>
                   </div>
                 )}

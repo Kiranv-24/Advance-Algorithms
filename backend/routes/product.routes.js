@@ -3,8 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const { upload } = require('../config/cloudinary.config');
 const productController = require('../controllers/productController');
-const { verifyToken } = require('../middleware/authMiddleware');
-
+const { verifyToken } = require('../middleware/auth');
+console.log("This is backend")
 // Get all products
 router.get('/', productController.getAllProducts);
 

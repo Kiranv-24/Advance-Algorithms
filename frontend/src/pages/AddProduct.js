@@ -101,7 +101,7 @@ const AddProduct = () => {
     if (selectedFile) {
       formData.append('imageUrl', selectedFile);
     }
-
+    console.log("mskxmksmxkm",formData);
     try {
       const response = await axios.post('http://localhost:5000/api/products', formData, {
         headers: {

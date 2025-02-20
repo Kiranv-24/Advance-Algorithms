@@ -90,7 +90,7 @@ const SignUp = () => {
       localStorage.setItem('token', data.token);
       
       // Redirect to dashboard
-      navigate('/dashboard');
+      navigate('/Login');
       
     } catch (err) {
       console.error('Registration error:', err);

@@ -127,34 +127,24 @@ const orderController = {
     },
 
     getUserOrders: async (req, res) => {
-        try {
-            const userId = req.user.userId.toString();
-            
-            // Get orders from MySQL
-            const [mysqlOrders] = await db.query(
-                `SELECT o.*, oi.*, p.name as product_name 
-                 FROM orders o 
-                 JOIN order_items oi ON o.id = oi.order_id 
-                 JOIN products p ON oi.product_id = p.id 
-                 WHERE o.user_id = ? 
-                 ORDER BY o.created_at DESC`,
-                [userId]
-            );
-
-            // Get orders from MongoDB
-            try {
-                const mongoOrders = await Order.find({ user_id: userId }).sort({ created_at: -1 });
-                console.log('MongoDB orders retrieved:', mongoOrders.length);
-            } catch (mongoError) {
-                console.error('Error fetching from MongoDB:', mongoError);
-            }
-
-            res.json(mysqlOrders);
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-            res.status(500).json({ message: 'Error fetching orders' });
+    try {
+        const userId = req.user.userId.toString();
+        console.log("its user id",userId)
+        // Fetch orders from MongoDB for the specific user
+        const mongoOrders = await Order.find({ user_id: userId })
+            .sort({ created_at: -1 }) // Sort by latest orders first
+            .select("_id mysql_order_id total_amount shipping_address phone_number status items created_at"); // Select relevant fields
+        
+        if (!mongoOrders.length) {
+            return res.status(404).json({ message: "No orders found for this user" });
         }
-    },
+
+        res.json(mongoOrders);
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        res.status(500).json({ message: "Error fetching orders" });
+    }
+},
 
     getAllOrders: async (req, res) => {
         const connection = await db.getConnection();

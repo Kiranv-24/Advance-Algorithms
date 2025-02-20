@@ -6,10 +6,10 @@ const stripe = require("../config/stripe.config");
 router.post("/create-payment-intent", auth, async (req, res) => {
   try {
     const { amount } = req.body;
-
-    // Log the amount for reference
     console.log("Amount received:", amount);
-
+    // Log the amount for reference
+    // console.log("Amount received:", amount);
+    console.log(req.body);
     // Create a PaymentIntent with a success response
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -30,7 +30,7 @@ router.post("/create-payment-intent", auth, async (req, res) => {
       amount: paymentIntent.amount,
       status: paymentIntent.status,
     });
-
+    console.log("Client secret:", paymentIntent.client_secret);
     // Send successful response with the client secret
     res.json({
       success: true,

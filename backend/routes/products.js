@@ -8,7 +8,7 @@ const User = require('../models/User');
 // Public routes
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProduct);
-
+console.log("This is backend")
 // Protected routes - Admin only
 router.post('/', auth, isAdmin, uploadMiddleware, productController.addProduct);
 router.put('/:id', auth, isAdmin, uploadMiddleware, productController.updateProduct);

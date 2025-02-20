@@ -1,45 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Grid, 
-  Card, 
-  CardContent, 
-  CardMedia, 
-  Typography, 
-  Button, 
-  Box,
-  Snackbar,
-} from '@mui/material';
+import { Dialog, Snackbar } from '@mui/material'; // Removed Backdrop
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SparklesIcon, HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { Link } from 'react-router-dom';
 import ProductReview from '../components/ProductReview';
 import { productService, cartService } from '../services/api';
 
 const Products = () => {
+  const navigate = useNavigate();
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
-  const [hoveredProduct, setHoveredProduct] = useState(null);
   const [message, setMessage] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [expandedProduct, setExpandedProduct] = useState(null);
   const role = localStorage.getItem('role');
 
   useEffect(() => {
     fetchProducts();
   }, []);
-
-  const handleReviewClick = (product) => {
-    setSelectedProduct(product);
-    setOpenReviewDialog(true);
-  };
-
-  const handleReviewSubmitted = () => {
-    setOpenReviewDialog(false);
-    fetchProducts(); // Refresh products to show updated reviews
-  };
 
   const fetchProducts = async () => {
     try {
@@ -48,6 +27,16 @@ const Products = () => {
     } catch (error) {
       console.error('Error fetching products:', error);
     }
+  };
+
+  const handleReviewClick = (product) => {
+    setSelectedProduct(product);
+    setOpenReviewDialog(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    setOpenReviewDialog(false);
+    fetchProducts();
   };
 
   const handleDeleteProduct = async (productId) => {
@@ -63,19 +52,13 @@ const Products = () => {
   };
 
   const handleEditProduct = (productId) => {
-    // Your logic to handle editing the product
-    console.log(`Editing product with ID: ${productId}`);
+    navigate(`/admin/edit-product/${productId}`);
   };
 
   const handleAddToCart = async (productId) => {
     try {
-      await cartService.addToCart({
-        productId,
-        quantity: 1,
-      });
-      // Trigger cart update
+      await cartService.addToCart({ productId, quantity: 1 });
       window.dispatchEvent(new CustomEvent('cart-updated'));
-      // Show success message
       setMessage('Product added to cart');
       setOpenSnackbar(true);
     } catch (error) {
@@ -85,9 +68,15 @@ const Products = () => {
     }
   };
 
+  const toggleReadMore = (productId) => {
+    setExpandedProduct(expandedProduct === productId ? null : productId);
+  };
+
   return (
     <div className="min-h-screen bg-[#E8E8E8]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Removed Backdrop component */}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -102,15 +91,12 @@ const Products = () => {
               transition={{ delay: index * 0.1 }}
             >
               <div className="relative bg-white rounded-2xl shadow-md overflow-hidden">
-                {/* Product Image */}
                 <div className="relative h-64 overflow-hidden">
                   <img
                     src={product.image_url || 'https://via.placeholder.com/400'}
                     alt={product.name}
                     className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/400'; // Fallback image in case of error
-                    }}
+                    onError={(e) => { e.target.src = 'https://via.placeholder.com/400'; }}
                   />
                   {product.quantity === 0 && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -119,12 +105,20 @@ const Products = () => {
                   )}
                 </div>
 
-                {/* Product Details */}
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
+                  
+                  <p className="text-gray-600 mb-4">
+                    {expandedProduct === product.id ? product.description : `${product.description.substring(0, 100)}...`}
+                    {product.description.length > 100 && (
+                      <button 
+                        onClick={() => toggleReadMore(product.id)} 
+                        className="text-teal-600 font-semibold ml-2"
+                      >
+                        {expandedProduct === product.id ? "Read Less" : "Read More"}
+                      </button>
+                    )}
+                  </p>
 
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold text-teal-600">₹{product.price}</span>
@@ -137,19 +131,18 @@ const Products = () => {
                     </span>
                   </div>
 
-                  {/* Action Buttons */}
                   {role === 'admin' ? (
                     <div className="flex gap-4">
                       <button
                         onClick={() => handleEditProduct(product.id)}
-                        className="flex-1 inline-flex justify-center items-center px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold hover:bg-white hover:text-teal-600 border-black hover:border-teal-600 transform hover:scale-105 transition-all duration-300 hover:translate-y-1"
+                        className="flex-1 px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700"
                       >
                         <SparklesIcon className="h-5 w-5 mr-2" />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(product.id)}
-                        className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-white hover:text-red-600 border-black hover:border-red-600 transform hover:scale-105 transition-all duration-300"
+                        className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700"
                       >
                         Delete
                       </button>
@@ -158,9 +151,9 @@ const Products = () => {
                     <div className="flex gap-4">
                       <button
                         onClick={() => handleReviewClick(product)}
-                        className="flex-1 inline-flex justify-center items-center px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors duration-300"
+                        className="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition-all shadow-md flex items-center justify-center gap-2"
                       >
-                        <HeartIcon className="h-5 w-5 mr-2" />
+                        <HeartIcon className="h-5 w-5" />
                         Review
                       </button>
                       <Dialog 
@@ -184,13 +177,13 @@ const Products = () => {
                       <button
                         onClick={() => handleAddToCart(product.id)}
                         disabled={product.quantity === 0}
-                        className={`flex-1 inline-flex justify-center items-center px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
+                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all shadow-md flex items-center justify-center gap-2 ${
                           product.quantity === 0
-                            ? 'bg-gray-300 cursor-not-allowed'
-                            : 'bg-teal-600 hover:bg-teal-700 text-white'
+                            ? 'bg-gray-300 cursor-not-allowed text-gray-600'
+                            : 'bg-teal-500 hover:bg-teal-600 text-white'
                         }`}
                       >
-                        <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                        <ShoppingCartIcon className="h-5 w-5" />
                         Add to Cart
                       </button>
                     </div>
@@ -202,13 +195,11 @@ const Products = () => {
         </motion.div>
       </div>
 
-      {/* Snackbar Notification */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={3000}
         onClose={() => setOpenSnackbar(false)}
         message={message}
-        className="!bottom-4 !left-1/2 !-translate-x-1/2"
       />
     </div>
   );

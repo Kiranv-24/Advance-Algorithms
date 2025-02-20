@@ -16,6 +16,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import AdminOrders from './pages/AdminOrders';
 import ProductAnalysisPage from "./pages/ProductAnalysisPage";
+import OrderHistory from "./pages/OrderHistory";
 import './index.css';
 // ...existing code...
 
@@ -88,6 +89,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["customer"]}>
                 <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/OrderHistory"
+            element={
+              <ProtectedRoute allowedRoles={["customer"]}>
+                <OrderHistory />
               </ProtectedRoute>
             }
           />

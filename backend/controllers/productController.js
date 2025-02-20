@@ -35,31 +35,43 @@ const productController = {
     // Update product
     updateProduct: async (req, res) => {
         try {
-            const { name, description, price, quantity } = req.body;
-            const imageUrl = req.file ? req.file.path : null;
+            const { name, description, price, quantity, imageUrl } = req.body;
             const productId = req.params.id;
-
+            console.log("mskxmksmxkm",req.body);
             // Get existing product
             const [existingProduct] = await db.query(
                 'SELECT * FROM products WHERE id = ?',
                 [productId]
             );
-
+    
             if (existingProduct.length === 0) {
                 return res.status(404).json({ message: 'Product not found' });
             }
-
-            // Update query with quantity
-            const updateQuery = imageUrl
-                ? 'UPDATE products SET name=?, description=?, price=?, quantity=?, image_url=? WHERE id=?'
-                : 'UPDATE products SET name=?, description=?, price=?, quantity=? WHERE id=?';
-            
-            const updateParams = imageUrl
-                ? [name, description, price, quantity, imageUrl, productId]
-                : [name, description, price, quantity, productId];
-
+    
+            // let imageUrl = existingProduct[0].image_url;
+    
+            // Upload new image to Cloudinary if provided
+            // if (req.file) {
+            //     // Delete old image from Cloudinary if it exists
+            //     if (imageUrl) {
+            //         const publicId = imageUrl.split('/').pop().split('.')[0];
+            //         await cloudinary.uploader.destroy(publicId);
+            //     }
+    
+            //     // Upload new image to Cloudinary
+               
+            // }
+    
+            // Update product in the database
+            const updateQuery = `
+                UPDATE products 
+                SET name=?, description=?, price=?, quantity=?, image_url=?
+                WHERE id=?
+            `;
+            const updateParams = [name, description, price, quantity, imageUrl, productId];
+    
             await db.query(updateQuery, updateParams);
-
+    
             res.json({ 
                 message: 'Product updated successfully',
                 product: {
@@ -68,7 +80,7 @@ const productController = {
                     description,
                     price,
                     quantity,
-                    image_url: imageUrl || existingProduct[0].image_url
+                    image_url: imageUrl
                 }
             });
         } catch (error) {
@@ -123,7 +135,7 @@ const productController = {
             
             const { name, description, price, quantity, imageUrl } = req.body;
             // const imageUrl = req.imageUrl ? req.file.path : null;
-            // console.log(imageUrl)
+            console.log("This is imgae url",imageUrl)
             // Validate price
             const numericPrice = parseFloat(price);
             if (isNaN(numericPrice) || numericPrice <= 0 || numericPrice > 999999.99) {
@@ -174,7 +186,24 @@ const productController = {
                 error: error.message 
             });
         }
-    }
+    },
+    updateCartItem: async (req, res) => {
+        try {
+            const { itemId } = req.params;
+            const { quantity } = req.body;
+
+            await db.query(
+                'UPDATE cart_items SET quantity = ? WHERE id = ?',
+                [quantity, itemId]
+            );
+
+            res.status(200).json({ message: 'Cart item updated' });
+        } catch (error) {
+            console.error('Error updating cart item:', error);
+            res.status(500).json({ message: 'Error updating cart item' });
+        }
+    },
+
 };
 
 module.exports = productController;

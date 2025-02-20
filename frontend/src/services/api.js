@@ -56,11 +56,27 @@ export const reviewService = {
 };
 
 export const cartService = {
-  addToCart: (data) => axiosInstance.post('/cart/add', {
-    productId: parseInt(data.productId),
-    quantity: parseInt(data.quantity) || 1
-  }),
-  getCart: () => axiosInstance.get('/cart')
+  addToCart: (data) =>
+    axiosInstance.post('/cart/add', {
+      productId: parseInt(data.productId),
+      quantity: parseInt(data.quantity) || 1
+    }),
+  getCart: () => axiosInstance.get('/cart'),
+  updateCartItem: (id, quantity) =>
+    axiosInstance.put(`/cart/update/${id}`, {
+      quantity: parseInt(quantity)
+    }),
+  removeCartItem: (id) => axiosInstance.delete(`/cart/remove/${id}`), // Remove single item
+  clearCart: () => axiosInstance.delete('/cart/clear') // Remove all items
 };
 
-export default axiosInstance; 
+// Order Service
+export const orderService = {
+  getUserOrders: () => axiosInstance.get('/orders'), // Fetch all orders
+  // getOrderById: (id) => axiosInstance.get(/orders), // Fetch a specific order by ID
+  createOrder: (data) => axiosInstance.post('/orders', data), // Create a new order
+  updateOrderStatus: (id, status) => axiosInstance.put(`/orders/${id}`, { status }), // Update order status
+  deleteOrder: (id) => axiosInstance.delete(`/orders/${id}`) // Delete an order
+};
+
+export default axiosInstance;

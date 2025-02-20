@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from '../services/api';
 
@@ -38,8 +39,52 @@ const Cart = () => {
     }
   };
 
+  const handleIncreaseQuantity = async (item) => {
+    const updatedQuantity = item.quantity + 1;
+    try {
+      await cartService.updateCartItem(item.product_id, updatedQuantity);
+      setCartItems(cartItems.map(i => i.product_id === item.product_id ? { ...i, quantity: updatedQuantity } : i));
+    } catch (error) {
+      console.error('Error updating cart:', error);
+    }
+  };
+
+  const handleDecreaseQuantity = async (item) => {
+    if (item.quantity > 1) {
+      const updatedQuantity = item.quantity - 1;
+      try {
+        await cartService.updateCartItem(item.product_id, updatedQuantity);
+        setCartItems(cartItems.map(i => i.product_id === item.product_id ? { ...i, quantity: updatedQuantity } : i));
+      } catch (error) {
+        console.error('Error updating cart:', error);
+      }
+    }
+  };
+
+  const handleRemoveItem = async (item) => {
+    try {
+      await cartService.removeCartItem(item.product_id);
+      setCartItems(cartItems.filter(i => i.product_id !== item.product_id));
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
+
+  const handleClearCart = async () => {
+    try {
+      await cartService.clearCart();
+      setCartItems([]);
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+    }
+  };
+
   const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  };
+
+  const handleProceedToCheckout = () => {
+    navigate('/checkout');
   };
 
   if (loading) return <Typography>Loading...</Typography>;
@@ -56,7 +101,7 @@ const Cart = () => {
       ) : (
         <>
           {cartItems.map((item) => (
-            <Card key={item.id} sx={{ mb: 2 }}>
+            <Card key={item.product_id} sx={{ mb: 2 }}>
               <CardContent>
                 <Grid container spacing={2} alignItems="center">
                   <Grid item xs={12} sm={3}>
@@ -66,20 +111,23 @@ const Cart = () => {
                       style={{ width: '100%', maxWidth: '100px' }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={5}>
                     <Typography variant="h6">{item.name}</Typography>
                     <Typography color="primary" variant="h6">
-                    ₹{item.price}
+                      ₹{item.price}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  <Grid item xs={12} sm={4}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconButton size="small">
+                      <IconButton size="small" onClick={() => handleDecreaseQuantity(item)}>
                         <RemoveIcon />
                       </IconButton>
                       <Typography sx={{ mx: 2 }}>{item.quantity}</Typography>
-                      <IconButton size="small">
+                      <IconButton size="small" onClick={() => handleIncreaseQuantity(item)}>
                         <AddIcon />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => handleRemoveItem(item)}>
+                        <DeleteIcon />
                       </IconButton>
                     </Box>
                   </Grid>
@@ -96,12 +144,20 @@ const Cart = () => {
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              size="large"
+              onClick={handleClearCart}
+            >
+              Clear Cart
+            </Button>
             <Button
               variant="contained"
               color="primary"
               size="large"
-              onClick={() => navigate('/checkout')}
+              onClick={handleProceedToCheckout}
             >
               Proceed to Checkout
             </Button>

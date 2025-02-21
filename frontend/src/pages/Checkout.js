@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { cartService } from "../services/api";
+import { Dialog, Snackbar } from '@mui/material'; // Removed Backdrop
 import {
   Container,
   Paper,
@@ -33,6 +34,8 @@ const Checkout = () => {
   const [cartItems, setCartItems] = useState([]);
   const [error, setError] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [message, setMessage] = useState('');
+  const [openSnackbar, setOpenSnackbar] = useState(false);
 
   useEffect(() => {
     const fetchCartDetails = async () => {
@@ -66,10 +69,6 @@ const Checkout = () => {
       setError("Please enter a valid 10-digit phone number");
       return false;
     }
-    if (!/^(?=.*\d)(?=.*[a-zA-Z])(.+)$/.test(shippingAddress)) {
-      setError("Shipping address must contain door number, street, and city");
-      return false;
-    }
     setError("");
     return true;
   };
@@ -85,9 +84,6 @@ const Checkout = () => {
           { amount: cartTotal * 100 },
           { headers: { Authorization: `Bearer ${token}` } } // Send token
         );
-        // if(response.status){
-          // handlePaymentSuccess(response.data.clientSecret)
-        // }
         setClientSecret(response.data.clientSecret);
       } catch (error) {
         setError("Error generating payment intent");
@@ -97,34 +93,6 @@ const Checkout = () => {
   
     setActiveStep((prev) => prev + 1);
   };
-  
-  // const handlePaymentSuccess = async (paymentIntent) => {
-  //   try {
-  //     const token = localStorage.getItem("token");
-  //     await axios.post(
-  //       "http://localhost:5000/api/orders",
-  //       {
-  //         ...formData,
-  //         paymentIntentId: paymentIntent,
-  //       },
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     );
-
-  //     // Clear cart count in navbar
-  //     window.dispatchEvent(new CustomEvent("cart-updated"));
-
-  //     alert("Order placed successfully!");
-  //     navigate("/products");
-  //   } catch (error) {
-  //     console.error("Error creating order:", error);
-  //     setError(error.response?.data?.message || "Error creating order");
-  //   }
-  // };
 
   const handleBack = () => {
     setActiveStep((prev) => prev - 1);
@@ -209,18 +177,24 @@ const Checkout = () => {
           </Box>
         )}
 
-{activeStep === 2 && clientSecret && (
-  <Elements stripe={stripePromise} options={{ clientSecret }}>
-    <PaymentForm formData={formData} cartItems={cartItems} navigate={navigate} clientSecret={clientSecret} />
-  </Elements>
-)}
+        {activeStep === 2 && clientSecret && (
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <PaymentForm formData={formData} cartItems={cartItems} navigate={navigate} clientSecret={clientSecret} setMessage={setMessage} setOpenSnackbar={setOpenSnackbar} />
+          </Elements>
+        )}
 
       </Paper>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={3000}
+        onClose={() => setOpenSnackbar(false)}
+        message={message}
+      />
     </Container>
   );
 };
 
-const PaymentForm = ({ formData, cartItems, navigate, clientSecret }) => {
+const PaymentForm = ({ formData, cartItems, navigate, clientSecret, setMessage, setOpenSnackbar }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState("");
@@ -232,14 +206,14 @@ const PaymentForm = ({ formData, cartItems, navigate, clientSecret }) => {
       return;
     }
 
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: {
         card: elements.getElement(CardElement),
       },
     });
 
-    if (error) {
-      setError(error.message);
+    if (stripeError) {
+      setError(stripeError.message);
       return;
     }
 
@@ -261,7 +235,8 @@ const PaymentForm = ({ formData, cartItems, navigate, clientSecret }) => {
       );
 
       window.dispatchEvent(new CustomEvent("cart-updated"));
-      alert("Order placed successfully!");
+      setMessage('Order placed successfully!');
+      setOpenSnackbar(true);
       navigate("/products");
     } catch (err) {
       setError("Error saving order. Please try again.");
@@ -269,18 +244,19 @@ const PaymentForm = ({ formData, cartItems, navigate, clientSecret }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Typography variant="h6" gutterBottom>
-        Enter Card Details
-      </Typography>
-      <CardElement options={{ hidePostalCode: true }} />
-      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-      <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }} disabled={!stripe}>
-        Pay Now
-      </Button>
-    </form>
+    <div>
+      <form onSubmit={handleSubmit}>
+        <Typography variant="h6" gutterBottom>
+          Enter Card Details
+        </Typography>
+        <CardElement options={{ hidePostalCode: true }} />
+        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }} disabled={!stripe}>
+          Pay Now
+        </Button>
+      </form>
+    </div>
   );
 };
-
 
 export default Checkout;

@@ -75,38 +75,40 @@ const EditProduct = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
+  
     const numericPrice = parseFloat(product.price);
     if (isNaN(numericPrice) || numericPrice <= 0 || numericPrice > 999999.99) {
       setError('Price must be between 0 and 999,999.99');
       setLoading(false);
       return;
     }
-
+  
     const priceDecimalCheck = /^[0-9]+(\.[0-9]{1,2})?$/;
     if (!priceDecimalCheck.test(product.price)) {
       setError('Price should have up to two decimal places');
       setLoading(false);
       return;
     }
-
+  
     const numericQuantity = parseInt(product.quantity);
     if (isNaN(numericQuantity) || numericQuantity < 0) {
       setError('Quantity must be 0 or greater');
       setLoading(false);
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('name', String(product.name).trim());
     formData.append('description', String(product.description).trim());
     formData.append('price', numericPrice.toFixed(2));
     formData.append('quantity', numericQuantity);
-
+  
     if (selectedFile) {
       formData.append('imageUrl', selectedFile);
+    } else {
+      formData.append('imageUrl', product.imagePreview); // Send existing image URL if no new file is selected
     }
-    console.log("mskxmksmxkm",formData);
+  
     try {
       await axios.put(`http://localhost:5000/api/products/${id}`, formData, {
         headers: {
@@ -114,7 +116,7 @@ const EditProduct = () => {
           'Content-Type': 'multipart/form-data'
         }
       });
-
+  
       setMessage('Product updated successfully');
       setOpen(true);
       navigate('/products');
@@ -125,6 +127,7 @@ const EditProduct = () => {
       setLoading(false);
     }
   };
+  
 
   return (
     <Container maxWidth="sm">

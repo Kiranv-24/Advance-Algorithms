@@ -160,7 +160,7 @@ const productController = {
                 [
                     name,
                     description,
-                    numericPrice.toFixed(2), // Ensure price has 2 decimal places
+                    numericPrice.toFixed(2), 
                     numericQuantity,
                     imageUrl,
                     createdBy

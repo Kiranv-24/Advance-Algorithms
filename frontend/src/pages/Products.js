@@ -135,9 +135,13 @@ const Products = () => {
                     <div className="flex gap-4">
                       <button
                         onClick={() => handleEditProduct(product.id)}
-                        className="flex-1 px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700"
+                        className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-all shadow-md flex items-center justify-center gap-2 ${
+                          product.quantity === 0
+                            ? 'bg-gray-300 cursor-not-allowed text-gray-600'
+                            : 'bg-teal-500 hover:bg-teal-600 text-white'
+                        }`}
                       >
-                        <SparklesIcon className="h-5 w-5 mr-2" />
+                        <SparklesIcon className="h-5 w-5 mr-1" />
                         Edit
                       </button>
                       <button
